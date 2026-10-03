@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goldie</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{display:grid;place-items:center;background:transparent;font-family:'Press Start 2P',ui-monospace,Menlo,monospace}
+.card{width:min(100%,440px);margin:10px;padding:22px;border-radius:24px;color:#fff;text-align:center;
+  background:linear-gradient(135deg,#ffe3ee 0%,#ffc2d8 50%,#f9a8c9 100%);text-shadow:2px 2px 0 #e87aa6}
+.name{font-size:12px;margin-bottom:10px}
+.bar{height:12px;width:70%;margin:0 auto 6px;background:#f6b3cd;border-radius:6px;overflow:hidden;box-shadow:inset 0 0 0 2px #e87aa6}
+.fill{height:100%;width:60%;background:#fff;transition:width .4s}
+.lbl{font-size:8px;margin-bottom:6px}
+canvas{display:block;margin:0 auto;width:min(80%,260px);image-rendering:pixelated;cursor:pointer;touch-action:manipulation}
+.say{font-size:9px;min-height:12px;margin:8px 0 14px}
+.btns{display:flex;gap:10px;justify-content:center}
+button{font:inherit;font-size:10px;color:#fff;text-shadow:2px 2px 0 #e87aa6;background:#ff9fc3;border:0;border-radius:10px;padding:12px 16px;cursor:pointer;box-shadow:0 4px 0 #e87aa6}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #e87aa6}
+button:focus-visible,canvas:focus-visible{outline:3px solid #fff;outline-offset:3px}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="name">GOLDIE</div>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+  <div class="lbl">LOVE</div>
+  <canvas id="c" width="200" height="170" tabindex="0" aria-label="Pet Goldie"></canvas>
+  <div class="say" id="say" aria-live="polite"></div>
+  <div class="btns"><button id="pet">PET</button><button id="treat">TREAT</button></div>
+</main>
+<script>
+const P={g:'#e8b04a',d:'#b97a2b',l:'#f6d58e',k:'#2d2230',n:'#2d2230',p:'#ff7fa8',w:'#fff8ee'};
+const S=[
+"................",
+"...gggggggggg...",
+".dggggggggggggd.",
+".ddggggggggggdd.",
+".ddgkggggggkgdd.",
+".ddggggggggggdd.",
+".ddggllllllggdd.",
+".ddglllnnlllgdd.",
+"...gllllllllg...",
+"....gggggggg....",
+"...gggggggggg...",
+"..gggllllllggg..",
+"..gggllllllggg..",
+"..gggggggggggg..",
+"..gggg....gggg..",
+"..llll....llll.."];
+const HEART=[".h.h.","hhhhh",".hhh.","..h.."];
+const BONE=["ww....ww","wwwwwwww","ww....ww"];
+const TAILS=[[[18,12],[18,11],[19,10]],[[18,12],[19,12],[19,11]],[[18,13],[19,13]]];
+const ox=2, K=10, cv=document.getElementById('c'), x=cv.getContext('2d');
+let love=60, last=Date.now(), happyUntil=0, eatUntil=0, msgUntil=0, parts=[], say='';
+const $=id=>document.getElementById(id);
+const px=(c,r,col)=>{x.fillStyle=col;x.fillRect(c*K,r*K,K,K)};
+function speak(t){say=t;msgUntil=Date.now()+2200;$('say').textContent=t}
+function pet(){
+  love=Math.min(100,love+8);last=Date.now();happyUntil=last+1600;
+  parts.push({x:70+Math.random()*60,y:25,t:last});
+  speak(['WOOF!','*WAGS TAIL*','SO HAPPY!','HEHE','BEST DAY EVER'][Math.floor(Math.random()*5)]);
+}
+function treat(){
+  love=Math.min(100,love+15);last=Date.now();eatUntil=last+900;happyUntil=last+2200;
+  parts.push({x:90,y:25,t:last});speak('YUM YUM!');
+}
+$('pet').onclick=pet;$('treat').onclick=treat;cv.onclick=pet;
+cv.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pet()}};
+setInterval(()=>{love=Math.max(0,love-1)},3000);
+function draw(now){
+  const happy=now<happyUntil, idle=now-last, sleepy=idle>45000, sad=love<25&&!happy;
+  const blink=!happy&&!sleepy&&(now%3600)<150, closed=sleepy||blink||happy;
+  x.clearRect(0,0,200,170);
+  for(let c=5;c<17;c++)px(c,16,'rgba(232,122,166,.35)');
+  const speed=happy?220:sad||sleepy?0:700;
+  const tf=sad||sleepy?2:speed?Math.floor(now/speed)%2:2;
+  TAILS[tf].forEach(([c,r])=>px(c,r,P.d));
+  S.forEach((row,r)=>[...row].forEach((ch,c)=>{
+    if(ch==='.')return;
+    px(c+ox,r,r===4&&ch==='k'&&closed?P.g:P[ch]);
+  }));
+  if(closed){px(ox+4,5,P.k);px(ox+11,5,P.k)}
+  if(happy||now<eatUntil){[[7,8],[8,8],[7,9],[8,9]].forEach(([c,r])=>px(c+ox,r,P.p))}
+  if(now<eatUntil)BONE.forEach((row,r)=>[...row].forEach((ch,c)=>{if(ch==='w')px(c+6,9+r,P.w)}));
+  if(sad){px(ox+4,3,P.k);px(ox+11,3,P.k)}
+  parts=parts.filter(p=>now-p.t<1100);
+  parts.forEach(p=>{
+    const a=1-(now-p.t)/1100, oy=(now-p.t)/1100*40;
+    x.globalAlpha=a;x.fillStyle='#ff5c93';
+    HEART.forEach((row,r)=>[...row].forEach((ch,c)=>{if(ch==='h')x.fillRect(p.x+c*5,p.y-oy+r*5,5,5)}));
+  });
+  x.globalAlpha=1;
+  if(now>msgUntil){
+    const t=sleepy?'ZZZ...':sad?'PET ME PLEASE':'GOLDIE IS CHILLING';
+    if($('say').textContent!==t)$('say').textContent=t;
+  }
+  $('fill').style.width=love+'%';
+  requestAnimationFrame(()=>draw(Date.now()));
+}
+draw(Date.now());
+</script>
+</body>
+</html>
